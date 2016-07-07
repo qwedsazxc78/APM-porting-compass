@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ArduPilot Project
 
 You can find lots of development information at the [ArduPilot development site](http://dev.ardupilot.com)
@@ -129,3 +130,7 @@ join the [development discussion on Google
 Groups](https://groups.google.com/forum/?fromgroups#!forum/drones-discuss). Note
 that the Google Groups mailing lists are NOT for user tech support,
 and are moderated for new users to prevent off-topic discussion.
+=======
+# APM-porting-compass
+for ist8303/8308/8310 compass
+>>>>>>> 008b79acadb7a4f2a8310deb14aa12eb5275d47d
