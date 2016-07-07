@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 *~
 *.bin
 *.d
@@ -111,5 +110,4 @@ Thumbs.db
 
 # Debug files
 *.dSYM/
-*.su
->>>>>>> 008b79acadb7a4f2a8310deb14aa12eb5275d47d
+*.su 
