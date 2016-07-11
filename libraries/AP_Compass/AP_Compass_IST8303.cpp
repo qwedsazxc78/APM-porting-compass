@@ -96,8 +96,8 @@ bool AP_Compass_IST8303::read_raw()
 
     int16_t rx, ry, rz;
     rx = (((int16_t)buff[1]) << 8) | buff[0];
-    rz = (((int16_t)buff[3]) << 8) | buff[2];
-    ry = (((int16_t)buff[5]) << 8) | buff[4];
+    ry = (((int16_t)buff[3]) << 8) | buff[2];
+    rz = (((int16_t)buff[5]) << 8) | buff[4];
    
     if (rx == -4096 || ry == -4096 || rz == -4096) {
         // no valid data available

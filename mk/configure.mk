@@ -16,7 +16,7 @@ else
 endif
 	@echo  >> $(SKETCHBOOK)/config.mk
 	@echo  \# uncomment and fill in the path to Arduino if installed in an exotic location >> $(SKETCHBOOK)/config.mk
-	@echo  \# ARDUINO = /path/to/Arduino  >> $(SKETCHBOOK)/config.mk
+	@echo  \# ARDUINO = /path/to/Arduino  >> $(SKETCHBOOK)/config.mk 
 	@echo  >> $(SKETCHBOOK)/config.mk
 ######################## PX4 ####################################	
 	@echo \# PX4Firmware tree: fill in the path to PX4Firmware repository from github.com/diydrones: >> $(SKETCHBOOK)/config.mk
