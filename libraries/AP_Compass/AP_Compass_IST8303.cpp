@@ -36,6 +36,10 @@ extern const AP_HAL::HAL& hal;
 #define ConfigRegB           0x0B
 #define MAG_WHOAMI           0x00
 #define MAG_IS8303ID         0xFF
+#define IST8303_AVERAGE      0x41
+
+#define DataOutputRate_100HZ 0x06
+#define IST8303_AVG_16_TIME  0x24
 // #define magGain              0x20
 // #define PositiveBiasConfig   0x11
 // #define NegativeBiasConfig   0x12
@@ -58,7 +62,7 @@ extern const AP_HAL::HAL& hal;
 // #define DataOutputRate_15HZ   0x04
 // #define DataOutputRate_30HZ   0x05
 // #define DataOutputRate_75HZ   0x06
-#define DataOutputRate_100HZ   0x06
+
 
 // read_register - read a register value
 bool AP_Compass_IST8303::read_register(uint8_t address, uint8_t *value)
@@ -87,7 +91,7 @@ bool AP_Compass_IST8303::read_raw()
 
     if (hal.i2c->readRegisters(COMPASS_ADDRESS, 0x03, 6, buff) != 0) {
         if (_healthy[0]) {
-			hal.i2c->setHighSpeed(false);
+            hal.i2c->setHighSpeed(false);
         }
         _healthy[0] = false;
         _i2c_sem->give();
@@ -98,11 +102,12 @@ bool AP_Compass_IST8303::read_raw()
     rx = (((int16_t)buff[1]) << 8) | buff[0];
     ry = (((int16_t)buff[3]) << 8) | buff[2];
     rz = (((int16_t)buff[5]) << 8) | buff[4];
-   
+
     if (rx == -4096 || ry == -4096 || rz == -4096) {
         // no valid data available
         return false;
     }
+
 
     _mag_x = rx;
     _mag_y = ry;
@@ -121,37 +126,37 @@ void AP_Compass_IST8303::accumulate(void)
         // have the right orientation!)
         return;
     }
-   uint32_t tnow = hal.scheduler->micros();
-   if (_healthy[0] && _accum_count != 0 && (tnow - _last_accum_time) < 13333) {
-	  // the compass gets new data at 75Hz
-	  return;
-   }
+    uint32_t tnow = hal.scheduler->micros();
+    if (_healthy[0] && _accum_count != 0 && (tnow - _last_accum_time) < 13333) {
+        // the compass gets new data at 75Hz
+        return;
+    }
 
-   if (!_i2c_sem->take(1)) {
-       // the bus is busy - try again later
-       return;
-   }
-   bool result = read_raw();
-   _i2c_sem->give();
+    if (!_i2c_sem->take(1)) {
+        // the bus is busy - try again later
+        return;
+    }
+    bool result = read_raw();
+    _i2c_sem->give();
 
-   if (result) {
-	  // the _mag_N values are in the range -2048 to 2047, so we can
-	  // accumulate up to 15 of them in an int16_t. Let's make it 14
-	  // for ease of calculation. We expect to do reads at 10Hz, and
-	  // we get new data at most 75Hz, so we don't expect to
-	  // accumulate more than 8 before a read
-	  _mag_x_accum += _mag_x;
-	  _mag_y_accum += _mag_y;
-	  _mag_z_accum += _mag_z;
-	  _accum_count++;
-	  if (_accum_count == 14) {
-		 _mag_x_accum /= 2;
-		 _mag_y_accum /= 2;
-		 _mag_z_accum /= 2;
-		 _accum_count = 7;
-	  }
-	  _last_accum_time = tnow;
-   }
+    if (result) {
+        // the _mag_N values are in the range -2048 to 2047, so we can
+        // accumulate up to 15 of them in an int16_t. Let's make it 14
+        // for ease of calculation. We expect to do reads at 10Hz, and
+        // we get new data at most 75Hz, so we don't expect to
+        // accumulate more than 8 before a read
+        _mag_x_accum += _mag_x;
+        _mag_y_accum += _mag_y;
+        _mag_z_accum += _mag_z;
+        _accum_count++;
+        if (_accum_count == 14) {
+            _mag_x_accum /= 2;
+            _mag_y_accum /= 2;
+            _mag_z_accum /= 2;
+            _accum_count = 7;
+        }
+        _last_accum_time = tnow;
+    }
 }
 
 
@@ -171,7 +176,7 @@ bool AP_Compass_IST8303::init()
 {
     int numAttempts = 0, good_count = 0;
     bool success = false;
-    uint8_t calibration_gain = 0x20;
+    bool initREG = false;
     uint16_t expected_x = 715;
     uint16_t expected_yz = 715;
     float gain_multiple = 1.0;
@@ -182,16 +187,17 @@ bool AP_Compass_IST8303::init()
     if (!_i2c_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER)) {
         hal.scheduler->panic(PSTR("Failed to get IST8303 semaphore"));
     }
- 
-    // determine if we are using IST8303 
+
+    // determine if we are using IST8303
     _base_config = 0;
-    if (!write_register(ConfigRegA, DataOutputRate_100HZ) ||
-        !read_register(ConfigRegA, &_base_config)) {
+    initREG = write_register(IST8303_AVERAGE, IST8303_AVG_16_TIME) && write_register(ConfigRegA, DataOutputRate_100HZ);
+
+    if (!initREG || !read_register(ConfigRegA, &_base_config) ) {
         _healthy[0] = false;
         _i2c_sem->give();
         return false;
     }
- 
+
 
     if ( _base_config == DataOutputRate_100HZ ) {
         // a 5883L supports the sample averaging config
@@ -202,7 +208,7 @@ bool AP_Compass_IST8303::init()
         return false;
     }
 
- 
+
 
     calibration[0] = 0;
     calibration[1] = 0;
@@ -234,9 +240,9 @@ bool AP_Compass_IST8303::init()
         // strap excitation. After that we accept values in a
         // reasonable range
         if (numAttempts > 2 &&
-            cal[0] > 0.7f && cal[0] < 1.35f &&
-            cal[1] > 0.7f && cal[1] < 1.35f &&
-            cal[2] > 0.7f && cal[2] < 1.35f) {
+                cal[0] > 0.7f && cal[0] < 1.35f &&
+                cal[1] > 0.7f && cal[1] < 1.35f &&
+                cal[2] > 0.7f && cal[2] < 1.35f) {
             hal.console->printf_P(PSTR("cal=%.2f %.2f %.2f good\n"), cal[0], cal[1], cal[2]);
             good_count++;
             calibration[0] += cal[0];
@@ -250,7 +256,7 @@ bool AP_Compass_IST8303::init()
         hal.console->printf_P(PSTR("CalX: %.2f CalY: %.2f CalZ: %.2f\n"), cal[0], cal[1], cal[2]);
 #endif
     }
- 
+
 
     if (good_count >= 5) {
         /*
@@ -274,21 +280,21 @@ bool AP_Compass_IST8303::init()
         calibration[1] = 1.0;
         calibration[2] = 1.0;
     }
- 
+
     // leave test mode
     if (!re_initialise()) {
         _i2c_sem->give();
         return false;
     }
- 
+
     _i2c_sem->give();
     _initialised = true;
 
-	// perform an initial read
-	_healthy[0] = true;
-	read(); 
+    // perform an initial read
+    _healthy[0] = true;
+    read();
 #if 0
-    hal.console->printf_P(PSTR("CalX: %.2f CalY: %.2f CalZ: %.2f\n"), 
+    hal.console->printf_P(PSTR("CalX: %.2f CalY: %.2f CalZ: %.2f\n"),
                           calibration[0], calibration[1], calibration[2]);
 #endif
 
@@ -311,26 +317,43 @@ bool AP_Compass_IST8303::read()
         }
         if (!re_initialise()) {
             _retry_time = hal.scheduler->millis() + 1000;
-			hal.i2c->setHighSpeed(false);
+            hal.i2c->setHighSpeed(false);
             return false;
         }
     }
 
-	if (_accum_count == 0) {
-	   accumulate();
-	   if (!_healthy[0] || _accum_count == 0) {
-		  // try again in 1 second, and set I2c clock speed slower
-		  _retry_time = hal.scheduler->millis() + 1000;
-		  hal.i2c->setHighSpeed(false);
-		  return false;
-	   }
-	}
+    if (_accum_count == 0) {
+        accumulate();
+        if (!_healthy[0] || _accum_count == 0) {
+            // try again in 1 second, and set I2c clock speed slower
+            _retry_time = hal.scheduler->millis() + 1000;
+            hal.i2c->setHighSpeed(false);
+            return false;
+        }
+    }
 
-	_field[0].x = _mag_x_accum * calibration[0] / _accum_count;
-	_field[0].y = _mag_y_accum * calibration[1] / _accum_count;
-	_field[0].z = _mag_z_accum * calibration[2] / _accum_count;
-	_accum_count = 0;
-	_mag_x_accum = _mag_y_accum = _mag_z_accum = 0;
+    // add soft-iron and hard-iron calibration fot ist8308
+    // 20160718 Alex
+    float tmpMx, tmpMy, tmpMz;  
+    float hardiron_offset[3] = { -15.5566, -8.25493, 9.48563};
+    float softiron_cali[3][3] = { 
+        {1.01029, -0.00406765, 0.0500691}, { -0.00394693, 0.989141, 0.0166779}, {0.0498103, 0.0166274, 1.00346}
+    };
+
+    tmpMx = (_mag_x_accum * calibration[0] / _accum_count) - hardiron_offset[0];
+    tmpMy = (_mag_y_accum * calibration[1] / _accum_count) - hardiron_offset[1];
+    tmpMz = (_mag_z_accum * calibration[2] / _accum_count) - hardiron_offset[2];
+    _field[0].x = softiron_cali[0][0] * tmpMx + softiron_cali[0][1] * tmpMy  + softiron_cali[0][2] * tmpMz;
+    _field[0].y = softiron_cali[1][0] * tmpMx + softiron_cali[1][1] * tmpMy  + softiron_cali[1][2] * tmpMz;
+    _field[0].z = softiron_cali[2][0] * tmpMx + softiron_cali[2][1] * tmpMy  + softiron_cali[2][2] * tmpMz;
+
+
+    // _field[0].x = (_mag_x_accum * calibration[1] / _accum_count);
+    // _field[0].y = (_mag_y_accum * calibration[1] / _accum_count);
+    // _field[0].z = (_mag_z_accum * calibration[2] / _accum_count);
+
+    _accum_count = 0;
+    _mag_x_accum = _mag_y_accum = _mag_z_accum = 0;
 
     last_update = hal.scheduler->micros(); // record time of update
 
@@ -354,10 +377,10 @@ bool AP_Compass_IST8303::read()
     _field[0] += _offset[0].get();
 
     // apply motor compensation
-    if(_motor_comp_type != AP_COMPASS_MOT_COMP_DISABLED && _thr_or_curr != 0.0f) {
+    if (_motor_comp_type != AP_COMPASS_MOT_COMP_DISABLED && _thr_or_curr != 0.0f) {
         _motor_offset[0] = _motor_compensation[0].get() * _thr_or_curr;
         _field[0] += _motor_offset[0];
-    }else{
+    } else {
         _motor_offset[0].zero();
     }
 
