@@ -1,6 +1,21 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#define THISFIRMWARE "ArduCopter V3.2.1.2"
+#define THISFIRMWARE "ArduCopter V3.2.1.3"
+
+/*
+IST teck Inc.
+author : Minghung, Hsieh
+original version : v3.2.1.1
+
+v3.2.1.2 
+1.build driver and calibrate the ist8310 (compass) of soft-iron and hard-iron
+2.Real fly test 
+
+v3.2.1.3 relese version
+1.re-calibrate and fix the softiron matrix in ist8303 driver, the funciton of read
+2.real fly test is ok.
+ */
+
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
