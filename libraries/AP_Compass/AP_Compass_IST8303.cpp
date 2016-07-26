@@ -334,22 +334,17 @@ bool AP_Compass_IST8303::read()
 
     // add soft - iron and hard - iron calibration fot ist8308
     // 20160718 Alex
-    // float hardiron_offset[3] = {30.4138, -6.58599, -50.6421};
-    // float softiron_cali[3][3] = {
-    //     {0.99451, 0.00453801, -0.016419}, { 0.00454868, 0.99591, -0.0376813}, {-0.0164247, -0.0376842, 1.01136}
-    // };
     // float hardiron_offset[3] = {0, 0, 0};
     // float softiron_cali[3][3] = {
     //     {1, 0, 0}, { 0, 1, 0}, {0, 0, 1 }
     // };
-    float hardiron_offset[3] = {-33.5942, -26.6654, 15.8412};
+    float hardiron_offset[3] = { -33.5942, -26.6654, 15.8412};
     float softiron_cali[3][3] = {
-        {0.9777, -0.00137853, 0.0227123 }, {-0.00137593, 1.02076, -0.0345169}, {0.0227065, -0.0345167, 1.0037 }
-    };    
+        {0.9777, -0.00137853, 0.0227123 }, { -0.00137593, 1.02076, -0.0345169}, {0.0227065, -0.0345167, 1.0037 }
+    };
 
-    ; ; 
-     float tmpMx, tmpMy, tmpMz;
-    float LSB2mG = 3; 
+    float tmpMx, tmpMy, tmpMz;
+    float LSB2mG = 3;
     tmpMx = (_mag_x_accum * calibration[0] / _accum_count) - hardiron_offset[0];
     tmpMy = (_mag_y_accum * calibration[1] / _accum_count) - hardiron_offset[1];
     tmpMz = (_mag_z_accum * calibration[2] / _accum_count) - hardiron_offset[2];
