@@ -40,6 +40,8 @@ Compass::learn_offsets(void)
 
     if (!_null_init_done) {
         // first time through
+        // COMPASS_MAX_INSTANCES : you could use one or two compass in your drone
+        // (_field[k].x+0.5f) - ofs.x -> 0.5f make it round up
         _null_init_done = true;
         for (uint8_t k=0; k<COMPASS_MAX_INSTANCES; k++) {
             const Vector3f &ofs = _offset[k].get();

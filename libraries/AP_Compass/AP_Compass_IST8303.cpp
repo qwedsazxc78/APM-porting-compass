@@ -15,11 +15,8 @@
  */
 
 /*
- *       AP_Compass_HMC5843.cpp - Arduino Library for HMC5843 I2C magnetometer
- *       Code by Jordi Muñoz and Jose Julio. DIYDrones.com
- *
  *       Sensor is conected to I2C port
- *       Sensor is initialized in Continuos mode (10Hz)
+ *       Sensor is initialized in Continuos mode (100Hz)
  *
  */
 
@@ -40,29 +37,6 @@ extern const AP_HAL::HAL& hal;
 
 #define DataOutputRate_100HZ 0x06
 #define IST8303_AVG_16_TIME  0x24
-// #define magGain              0x20
-// #define PositiveBiasConfig   0x11
-// #define NegativeBiasConfig   0x12
-// #define NormalOperation      0x10
-// #define ModeRegister         0x02
-// #define ContinuousConversion 0x00
-// #define SingleConversion     0x01
-
-// ConfigRegA valid sample averaging for IST8303
-// #define SampleAveraging_1    0x00
-// #define SampleAveraging_2    0x01
-// #define SampleAveraging_4    0x02
-// #define SampleAveraging_8    0x03
-
-// ConfigRegA valid data output rates for IST8303
-// #define DataOutputRate_0_75HZ 0x00
-// #define DataOutputRate_1_5HZ  0x01
-// #define DataOutputRate_3HZ    0x02
-// #define DataOutputRate_7_5HZ  0x03
-// #define DataOutputRate_15HZ   0x04
-// #define DataOutputRate_30HZ   0x05
-// #define DataOutputRate_75HZ   0x06
-
 
 // read_register - read a register value
 bool AP_Compass_IST8303::read_register(uint8_t address, uint8_t *value)
@@ -143,7 +117,7 @@ void AP_Compass_IST8303::accumulate(void)
         // the _mag_N values are in the range -2048 to 2047, so we can
         // accumulate up to 15 of them in an int16_t. Let's make it 14
         // for ease of calculation. We expect to do reads at 10Hz, and
-        // we get new data at most 75Hz, so we don't expect to
+        // we get new data at most 100Hz, so we don't expect to
         // accumulate more than 8 before a read
         _mag_x_accum += _mag_x;
         _mag_y_accum += _mag_y;
@@ -153,7 +127,7 @@ void AP_Compass_IST8303::accumulate(void)
             _mag_x_accum /= 2;
             _mag_y_accum /= 2;
             _mag_z_accum /= 2;
-            _accum_count = 7;
+            _accum_count = 4;
         }
         _last_accum_time = tnow;
     }
@@ -334,22 +308,17 @@ bool AP_Compass_IST8303::read()
 
     // add soft - iron and hard - iron calibration fot ist8308
     // 20160718 Alex
-    // float hardiron_offset[3] = {30.4138, -6.58599, -50.6421};
-    // float softiron_cali[3][3] = {
-    //     {0.99451, 0.00453801, -0.016419}, { 0.00454868, 0.99591, -0.0376813}, {-0.0164247, -0.0376842, 1.01136}
-    // };
     // float hardiron_offset[3] = {0, 0, 0};
     // float softiron_cali[3][3] = {
     //     {1, 0, 0}, { 0, 1, 0}, {0, 0, 1 }
-    // };
-    float hardiron_offset[3] = {-33.5942, -26.6654, 15.8412};
+    // }; 
+    float hardiron_offset[3] = { -33.5942, -26.6654, 15.8412};
     float softiron_cali[3][3] = {
-        {0.9777, -0.00137853, 0.0227123 }, {-0.00137593, 1.02076, -0.0345169}, {0.0227065, -0.0345167, 1.0037 }
-    };    
+        {0.9777, -0.00137853, 0.0227123 }, { -0.00137593, 1.02076, -0.0345169}, {0.0227065, -0.0345167, 1.0037 }
+    };
 
-    ; ; 
-     float tmpMx, tmpMy, tmpMz;
-    float LSB2mG = 3; 
+    float tmpMx, tmpMy, tmpMz;
+    float LSB2mG = 3;
     tmpMx = (_mag_x_accum * calibration[0] / _accum_count) - hardiron_offset[0];
     tmpMy = (_mag_y_accum * calibration[1] / _accum_count) - hardiron_offset[1];
     tmpMz = (_mag_z_accum * calibration[2] / _accum_count) - hardiron_offset[2];
